@@ -2,7 +2,7 @@
 
 import cv2
 import numpy as np
-
+import time
 
 def pointToLongerDistance(cap):
     """
@@ -15,19 +15,12 @@ def pointToLongerDistance(cap):
     _, frame = cap.read()
 
     # Acquisition
-    # Convert to gray
+    # Convert to grayscale
     img2gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # Apply filter
     bilateralFilter = cv2.bilateralFilter(img2gray, 9, 30, 30)
     # Edges detector
     edges = cv2.Canny(bilateralFilter, 25, 50)
-
-    # Method with built-in method findContours
-    findContours = frame.copy()
-    ret, thresh = cv2.threshold(img2gray, 150, 255, 0)
-    im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(findContours, contours, -1, (0, 255, 0), 3)
-
 
     # Method with manual looking
     stepsize=4
@@ -57,22 +50,81 @@ def pointToLongerDistance(cap):
     else :
         cv2.putText(frame, 'Right!', (250, 250), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
+    # Draw a box and print Obstacle if a distance is shorter to the box Y value
+    obstacleDetected=0
+    boxObstacle_X1=150
+    boxObstacle_X2 = 490
+    boxObstacle_Y=430 # 480 - 50 px
+    for x in range(len(edgearray)):
+        if edgearray[x][1] > boxObstacle_Y and edgearray[x][0] > boxObstacle_X1 and edgearray[x][0] < boxObstacle_X2:
+            cv2.line(frame, (boxObstacle_X1, boxObstacle_Y), (boxObstacle_X2, boxObstacle_Y),(0, 0, 255), 2)
+            cv2.line(frame, (boxObstacle_X1, 480), (boxObstacle_X1, boxObstacle_Y), (0, 0, 255), 2)
+            cv2.line(frame, (boxObstacle_X2, 480), (boxObstacle_X2, boxObstacle_Y), (0, 0, 255), 2)
+            cv2.putText(frame, 'OBSTACLE', (240, 465), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            obstacleDetected=1
+            break
+
+    if obstacleDetected == 0:
+        cv2.line(frame, (boxObstacle_X1, boxObstacle_Y), (boxObstacle_X2, boxObstacle_Y), (0, 255, 0), 2)
+        cv2.line(frame, (boxObstacle_X1, 480), (boxObstacle_X1, boxObstacle_Y), (0, 255, 0), 2)
+        cv2.line(frame, (boxObstacle_X2, 480), (boxObstacle_X2, boxObstacle_Y), (0, 255, 0), 2)
+
     # Print pictures
     cv2.imshow('Video Input', frame)
-    cv2.imshow('img2gray', img2gray)
-    cv2.imshow('bilateralFilter', bilateralFilter)
-    cv2.imshow('Edges', edges)
+    #cv2.imshow('img2gray', img2gray)
+    #cv2.imshow('bilateralFilter', bilateralFilter)
+    #cv2.imshow('Edges', edges)
+
+
+def detectObject(cap):
+    """
+    Function to detect objects
+    Keyword arguments:
+    cap -- video camera interface
+    """
+    # Take each frame
+    _, frame = cap.read()
+
+    # Convert to grayscale
+    img2gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Method with built-in method findContours
+    findContours = frame.copy()
+    ret, thresh = cv2.threshold(img2gray, 150, 255, 0)
+    im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(findContours, contours, -1, (0, 255, 0), 3)
+
+    # Print pictures
     cv2.imshow('findContours', findContours)
 
 
 if __name__ == "__main__":
+    cv2.setNumThreads(4)
     cap = cv2.VideoCapture(0)
 
+    numberOfFrames = 0
+
     while(1):
+        if numberOfFrames == 0:
+            startT1 = time.time()
+
         pointToLongerDistance(cap)
+        #detectObject(cap)
         k = cv2.waitKey(5) & 0xFF
-        if k == 27:
+
+        numberOfFrames = numberOfFrames + 1
+
+        if numberOfFrames > 80:
+            endT1 = time.time()
+            seconds = endT1 - startT1
+            fps = numberOfFrames / seconds
+            print("FPS statistics : ", fps)
+            numberOfFrames = 0
+
+        if k == 27: # OUT !
             break
+
+        #time.sleep(0.001) # let the processor rest
 
     cv2.destroyAllWindows()
     cap.release()
