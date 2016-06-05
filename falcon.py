@@ -76,7 +76,7 @@ def pointToLongerDistance(cap):
     #cv2.imshow('Edges', edges)
 
 
-def detectObject(cap):
+def findObject(cap):
     """
     Function to detect objects
     Keyword arguments:
@@ -87,12 +87,24 @@ def detectObject(cap):
 
     # Convert to grayscale
     img2gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    bilateralFilter = cv2.bilateralFilter(img2gray, 9, 30, 30)
 
     # Method with built-in method findContours
     findContours = frame.copy()
-    ret, thresh = cv2.threshold(img2gray, 150, 255, 0)
+    ret, thresh = cv2.threshold(bilateralFilter, 150, 255, 0)
     im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(findContours, contours, -1, (0, 255, 0), 3)
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area > 100:
+            approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
+            if len(approx) == 5:
+                cv2.drawContours(findContours, [cnt], 0, 255, -1)
+            elif len(approx) == 3:
+                cv2.drawContours(findContours, [cnt], 0, (0, 255, 0), -1)
+            elif len(approx) == 4:
+                cv2.drawContours(findContours, [cnt], 0, (0, 0, 255), -1)
+            else:
+                cv2.drawContours(findContours, [cnt], 0, (255, 0, 255), -1)
 
     # Print pictures
     cv2.imshow('findContours', findContours)
@@ -109,8 +121,7 @@ if __name__ == "__main__":
             startT1 = time.time()
 
         pointToLongerDistance(cap)
-        #detectObject(cap)
-        k = cv2.waitKey(5) & 0xFF
+        findObject(cap)
 
         numberOfFrames = numberOfFrames + 1
 
@@ -121,6 +132,7 @@ if __name__ == "__main__":
             print("FPS statistics : ", fps)
             numberOfFrames = 0
 
+        k = cv2.waitKey(5) & 0xFF
         if k == 27: # OUT !
             break
 
